@@ -28,11 +28,12 @@ class DnsVpnService : VpnService() {
 
         try {
             val builder = Builder()
-                .setSession("NetworkOptimizer DNS")
-                .setMtu(1280) // Tinh chỉnh MTU giảm phân mảnh gói tin mạng (Phase 5)
+                .setSession("LEVIATHAN ENGINE")
+                .setMtu(1280) // Cực hạn chống phân mảnh
+                .setBlocking(false) // Đột phá: Đặt TUN vào trạng thái Non-blocking để xử lý luồng cực nhanh
                 .addAddress("10.0.0.2", 32)
-                .addDnsServer("10.0.0.3") // Ép toàn bộ yêu cầu DNS của thiết bị vào địa chỉ ảo này
-                .addRoute("10.0.0.3", 32) // Chỉ bắt gói tin đi đến server ảo để xử lý bằng C++
+                .addDnsServer("10.0.0.3") 
+                .addRoute("10.0.0.3", 32) 
             
             vpnInterface = builder.establish()
             

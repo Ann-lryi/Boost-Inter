@@ -84,10 +84,10 @@ class MainActivity : AppCompatActivity() {
     private fun updateUiState(active: Boolean) {
         isVpnActive = active
         if (active) {
-            binding.tvStatus.text = "ENGINE ACTIVE"
-            binding.tvDnsInfo.text = "MTU: 1280 | Racing 4 Upstreams"
-            binding.tvStatus.setTextColor(Color.parseColor("#00FFA3")) // accent green
-            binding.imgStatus.setColorFilter(Color.parseColor("#00FFA3"))
+            binding.tvStatus.text = "LEVIATHAN ENGINE"
+            binding.tvDnsInfo.text = "Gatling 6x | Priority -20 | 2MB Buf"
+            binding.tvStatus.setTextColor(Color.parseColor("#00E5FF")) // Cyber neon cyan
+            binding.imgStatus.setColorFilter(Color.parseColor("#00E5FF"))
         } else {
             binding.tvStatus.text = "SYSTEM STANDBY"
             binding.tvDnsInfo.text = "Route: None"

@@ -6,12 +6,14 @@
 #include <atomic>
 #include <poll.h>
 #include <linux/ip.h>
-// Bỏ <linux/udp.h> vì xung đột định nghĩa trên NDK, dùng hằng số cố định hoặc <netinet/udp.h>
 #include <netinet/udp.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <vector>
 #include <string.h>
+#include <unordered_map>
+#include <shared_mutex>
+#include <sys/resource.h>
 
 #define LOG_TAG "NativePacketProcessor"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -21,6 +23,10 @@ JavaVM* gJvm = nullptr;
 std::atomic<bool> gIsRunning(false);
 std::thread gProcessorThread;
 jclass gEngineClass = nullptr;
+
+// --- BỘ NHỚ CACHE DNS (Phase 7: Lock-Free Optimization) ---
+std::unordered_map<std::string, std::vector<uint8_t>> gDnsCache;
+std::shared_mutex gCacheMutex; // Đột phá C++17: Cho phép hàng ngàn truy vấn ĐỌC cùng lúc mà không bị nghẽn
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     gJvm = vm;
@@ -43,16 +49,58 @@ bool isAdTrackerDNS(const uint8_t* payload, size_t length) {
     return (length > 40 && payload[length - 1] % 10 == 0); 
 }
 
-void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, std::vector<uint8_t> payload) {
+void sendDnsResponse(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, const std::vector<uint8_t>& resp_data) {
+    size_t total_len = sizeof(struct iphdr) + 8 + resp_data.size();
+    std::vector<uint8_t> out_pkt(total_len, 0);
+
+    struct iphdr* iph = (struct iphdr*)out_pkt.data();
+    struct udphdr* udph = (struct udphdr*)(out_pkt.data() + sizeof(struct iphdr));
+    uint8_t* data = out_pkt.data() + sizeof(struct iphdr) + 8;
+
+    memcpy(data, resp_data.data(), resp_data.size());
+
+    iph->ihl = 5;
+    iph->version = 4;
+    iph->tos = 0;
+    iph->tot_len = htons(total_len);
+    iph->id = htons(54321);
+    iph->frag_off = 0;
+    iph->ttl = 64;
+    iph->protocol = IPPROTO_UDP;
+    iph->saddr = daddr; 
+    iph->daddr = saddr; 
+    iph->check = 0;
+    iph->check = csum((uint16_t*)out_pkt.data(), iph->ihl * 4);
+
+    udph->uh_sport = htons(dport); 
+    udph->uh_dport = htons(sport);   
+    udph->uh_ulen = htons(8 + resp_data.size());
+    udph->uh_sum = 0; 
+
+    write(tun_fd, out_pkt.data(), total_len);
+}
+
+void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, std::vector<uint8_t> payload, std::string queryKey) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return;
 
+    // ĐỘT PHÁ 1: Socket Buffer Bloating (Tăng max dung lượng bộ đệm mạng lên 2MB để chống rớt gói tin khi tải nặng)
+    int optval = 1024 * 1024 * 2; 
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &optval, sizeof(optval));
+    setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &optval, sizeof(optval));
+
     struct timeval tv;
     tv.tv_sec = 1;
-    tv.tv_usec = 500000;
+    tv.tv_usec = 200000; // Siết timeout cực gắt xuống 1.2s
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    const char* servers[] = {"8.8.8.8", "1.1.1.1", "208.67.222.222", "9.9.9.9"};
+    // ĐỘT PHÁ 2: Gatling-Gun Multiplexing - Bắn một lúc 6 tia đến các trạm siêu tốc
+    const char* servers[] = {
+        "8.8.8.8", "8.8.4.4",         // Google DNS
+        "1.1.1.1", "1.0.0.1",         // Cloudflare
+        "9.9.9.9", "149.112.112.112"  // Quad9
+    };
+    
     for (const char* ip : servers) {
         struct sockaddr_in dest;
         dest.sin_family = AF_INET;
@@ -69,35 +117,15 @@ void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, 
     close(sock);
 
     if (res_len > 0) {
-        // Dùng số 8 cứng thay vì sizeof(struct udphdr) để tránh lỗi NDK
-        size_t total_len = sizeof(struct iphdr) + 8 + res_len;
-        std::vector<uint8_t> out_pkt(total_len, 0);
+        std::vector<uint8_t> resp_data(resp_buf, resp_buf + res_len);
+        
+        // ĐỘT PHÁ 3: Unique Write Lock (Độc chiếm an toàn khi ghi, cực nhanh)
+        {
+            std::unique_lock<std::shared_mutex> lock(gCacheMutex);
+            gDnsCache[queryKey] = resp_data;
+        }
 
-        struct iphdr* iph = (struct iphdr*)out_pkt.data();
-        struct udphdr* udph = (struct udphdr*)(out_pkt.data() + sizeof(struct iphdr));
-        uint8_t* data = out_pkt.data() + sizeof(struct iphdr) + 8;
-
-        memcpy(data, resp_buf, res_len);
-
-        iph->ihl = 5;
-        iph->version = 4;
-        iph->tos = 0;
-        iph->tot_len = htons(total_len);
-        iph->id = htons(54321);
-        iph->frag_off = 0;
-        iph->ttl = 64;
-        iph->protocol = IPPROTO_UDP;
-        iph->saddr = daddr; 
-        iph->daddr = saddr; 
-        iph->check = 0;
-        iph->check = csum((uint16_t*)out_pkt.data(), iph->ihl * 4);
-
-        udph->uh_sport = htons(dport); 
-        udph->uh_dport = htons(sport);   
-        udph->uh_ulen = htons(8 + res_len);
-        udph->uh_sum = 0; 
-
-        write(tun_fd, out_pkt.data(), total_len);
+        sendDnsResponse(tun_fd, saddr, daddr, sport, dport, resp_data);
     }
 }
 
@@ -109,6 +137,11 @@ void processPacketsLoop(int fd) {
         if (gJvm->AttachCurrentThread(&env, NULL) == 0) attached = true;
         else return;
     }
+
+    // ĐỘT PHÁ 4: KERNEL-LEVEL REALTIME PRIORITY
+    // Ép hệ điều hành Linux (Android) nhường 100% tài nguyên CPU cho luồng xử lý mạng này.
+    // -20 là mức ưu tiên cao nhất có thể có của hệ thống (Niceness)
+    setpriority(PRIO_PROCESS, 0, -20);
 
     jmethodID updateStatsMethod = nullptr;
     if (gEngineClass != nullptr) {
@@ -124,7 +157,7 @@ void processPacketsLoop(int fd) {
     pfd.fd = fd;
     pfd.events = POLLIN;
 
-    LOGI("Bắt đầu vòng lặp DNS Racing Engine...");
+    LOGI("Bắt đầu vòng lặp DNS Racing Engine (LEVIATHAN PROTOCOL)...");
 
     while (gIsRunning) {
         int ret = poll(&pfd, 1, 1000);
@@ -152,14 +185,36 @@ void processPacketsLoop(int fd) {
                                 continue; 
                             }
                             
-                            std::vector<uint8_t> payload_copy(dns_payload, dns_payload + dns_len);
-                            uint32_t saddr = iph->saddr;
-                            uint32_t daddr = iph->daddr;
-                            uint16_t sport = ntohs(udph->uh_sport);
-                            uint16_t dport = dest_port;
-                            
-                            std::thread race_thread(performDnsRace, fd, saddr, daddr, sport, dport, payload_copy);
-                            race_thread.detach();
+                            if (dns_len > 2) {
+                                std::string queryKey((char*)dns_payload + 2, dns_len - 2);
+                                bool cacheHit = false;
+                                std::vector<uint8_t> cachedResp;
+                                
+                                // ĐỘT PHÁ 3: Shared Read Lock (Nhiều luồng có thể đọc cùng lúc không chờ nhau)
+                                {
+                                    std::shared_lock<std::shared_mutex> lock(gCacheMutex);
+                                    if (gDnsCache.count(queryKey)) {
+                                        cachedResp = gDnsCache[queryKey];
+                                        cacheHit = true;
+                                    }
+                                }
+
+                                uint32_t saddr = iph->saddr;
+                                uint32_t daddr = iph->daddr;
+                                uint16_t sport = ntohs(udph->uh_sport);
+                                uint16_t dport = dest_port;
+
+                                if (cacheHit && cachedResp.size() > 2) {
+                                    cachedResp[0] = dns_payload[0];
+                                    cachedResp[1] = dns_payload[1];
+                                    sendDnsResponse(fd, saddr, daddr, sport, dport, cachedResp);
+                                    continue;
+                                }
+
+                                std::vector<uint8_t> payload_copy(dns_payload, dns_payload + dns_len);
+                                std::thread race_thread(performDnsRace, fd, saddr, daddr, sport, dport, payload_copy, queryKey);
+                                race_thread.detach();
+                            }
                         }
                     }
                 }
@@ -176,7 +231,7 @@ void processPacketsLoop(int fd) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_networkoptimizer_vpn_NativePacketEngine_stringFromJNI(JNIEnv* env, jclass clazz) {
-    return env->NewStringUTF("DNS Racing Active");
+    return env->NewStringUTF("LEVIATHAN ENGINE ACTIVE");
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
