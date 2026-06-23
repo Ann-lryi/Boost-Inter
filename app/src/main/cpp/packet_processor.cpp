@@ -81,8 +81,26 @@ void sendDnsResponse(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport,
 }
 
 void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, std::vector<uint8_t> payload, std::string queryKey) {
+    JNIEnv* env = nullptr;
+    bool attached = false;
+    if (gJvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if (gJvm->AttachCurrentThread(&env, NULL) == 0) attached = true;
+    }
+
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) return;
+    if (sock < 0) {
+        if (attached) gJvm->DetachCurrentThread();
+        return;
+    }
+
+    // ĐỘT PHÁ ANDROID 16: Gọi ngược về Kotlin để xin Kernel OS cấp phép "Protect" cho Socket này,
+    // xuyên thủng mọi hàng rào Firewall hoặc chế độ Lockdown của Android.
+    if (env && gEngineClass) {
+        jmethodID protectMethod = env->GetStaticMethodID(gEngineClass, "protect", "(I)Z");
+        if (protectMethod) {
+            env->CallStaticBooleanMethod(gEngineClass, protectMethod, sock);
+        }
+    }
 
     // ĐỘT PHÁ 1: Socket Buffer Bloating (Tăng max dung lượng bộ đệm mạng lên 2MB để chống rớt gói tin khi tải nặng)
     int optval = 1024 * 1024 * 2; 
@@ -127,6 +145,8 @@ void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, 
 
         sendDnsResponse(tun_fd, saddr, daddr, sport, dport, resp_data);
     }
+
+    if (attached) gJvm->DetachCurrentThread();
 }
 
 void processPacketsLoop(int fd) {

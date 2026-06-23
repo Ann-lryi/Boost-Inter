@@ -3,8 +3,12 @@ package com.networkoptimizer
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.networkoptimizer.databinding.ActivityMainBinding
@@ -22,6 +26,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        checkAndroid16Permissions()
+
         // Setup callback từ C++
         NativePacketEngine.onStatsUpdated = { packets, bytes, blocked ->
             runOnUiThread {
@@ -38,6 +44,26 @@ class MainActivity : AppCompatActivity() {
                 startVpnFlow()
             } else if (!isChecked && isVpnActive) {
                 stopVpnService()
+            }
+        }
+    }
+
+    private fun checkAndroid16Permissions() {
+        // 1. Xin quyền hiển thị Thông báo (bắt buộc trên Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+        }
+
+        // 2. Chống lại Phantom Process Killer của Android 14/15/16
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+                Toast.makeText(this, "Vui lòng cho phép bỏ qua tối ưu pin để C++ Engine chạy tối đa công suất", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

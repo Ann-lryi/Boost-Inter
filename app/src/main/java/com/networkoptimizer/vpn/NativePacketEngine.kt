@@ -6,6 +6,7 @@ object NativePacketEngine {
     }
 
     var onStatsUpdated: ((rx: Long, tx: Long, blocked: Long) -> Unit)? = null
+    var onProtectSocket: ((Int) -> Boolean)? = null
 
     @JvmStatic
     external fun stringFromJNI(): String
@@ -19,5 +20,10 @@ object NativePacketEngine {
     @JvmStatic
     fun onTrafficUpdated(packets: Long, bytes: Long, adsBlocked: Long) {
         onStatsUpdated?.invoke(packets, bytes, adsBlocked)
+    }
+
+    @JvmStatic
+    fun protect(socketFd: Int): Boolean {
+        return onProtectSocket?.invoke(socketFd) ?: false
     }
 }
