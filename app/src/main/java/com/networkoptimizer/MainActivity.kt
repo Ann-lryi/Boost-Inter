@@ -1,7 +1,7 @@
 package com.networkoptimizer
 
+import android.animation.ArgbEvaluator
 import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
@@ -12,11 +12,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.LinearInterpolator
+import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.networkoptimizer.databinding.ActivityMainBinding
+import com.networkoptimizer.ui.SpringInterpolator
 import com.networkoptimizer.vpn.DnsVpnService
 import com.networkoptimizer.vpn.NativePacketEngine
 
@@ -25,10 +26,6 @@ class MainActivity : AppCompatActivity() {
     private val VPN_REQUEST_CODE = 0x0F
     private lateinit var binding: ActivityMainBinding
     private var isVpnActive = false
-
-    // Animations
-    private var coreRotationAnimator: ObjectAnimator? = null
-    private var coreGlowAnimator: ObjectAnimator? = null
     
     // Cached Stats for smooth counting
     private var currentPackets: Long = 0
@@ -40,7 +37,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         checkAndroid16Permissions()
-        setupAnimations()
 
         NativePacketEngine.onStatsUpdated = { packets, bytes, blocked ->
             runOnUiThread {
@@ -63,30 +59,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupAnimations() {
-        // Infinite rotation for the Core
-        coreRotationAnimator = ObjectAnimator.ofFloat(binding.imgCore, "rotation", 0f, 360f).apply {
-            duration = 20000 // 20s full rotation
-            interpolator = LinearInterpolator()
-            repeatCount = ValueAnimator.INFINITE
-        }
-
-        // Breathing glow effect
-        val scaleX = PropertyValuesHolder.ofFloat("scaleX", 1f, 1.3f)
-        val scaleY = PropertyValuesHolder.ofFloat("scaleY", 1f, 1.3f)
-        val alpha = PropertyValuesHolder.ofFloat("alpha", 0.3f, 0.8f)
-        coreGlowAnimator = ObjectAnimator.ofPropertyValuesHolder(binding.coreGlow, scaleX, scaleY, alpha).apply {
-            duration = 1500
-            interpolator = AccelerateDecelerateInterpolator()
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.REVERSE
-        }
+    private fun popView(view: View) {
+        view.scaleX = 0.8f
+        view.scaleY = 0.8f
+        view.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(600)
+            .setInterpolator(SpringInterpolator(0.3f))
+            .start()
     }
 
     private fun animateNumber(textView: android.widget.TextView, start: Long, end: Long) {
         if (start == end) return
         val animator = ValueAnimator.ofFloat(start.toFloat(), end.toFloat())
-        animator.duration = 800 // Smooth 0.8s catch-up
+        animator.duration = 1000 // Very smooth 1s catch-up (OriginOS style)
+        animator.interpolator = DecelerateInterpolator(1.5f)
         animator.addUpdateListener { animation ->
             textView.text = (animation.animatedValue as Float).toLong().toString()
         }
@@ -134,39 +122,39 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUiState(active: Boolean) {
         isVpnActive = active
+        
+        // OriginOS Spring Animations for Widgets
+        popView(binding.widgetData)
+        popView(binding.widgetThreats)
+        popView(binding.widgetPackets)
+        popView(binding.cardAction)
+        
         if (active) {
-            binding.tvStatus.text = "HYPER-SPEED ACTIVE"
-            binding.tvStatus.setTextColor(Color.parseColor("#00E5FF")) // Neon Cyan
-            binding.tvDnsInfo.text = "Priority: -20 (Max) | Mutex Cache"
+            binding.fluidCore.setActive(true)
             
-            // Transform Widgets to "ON" state
-            binding.cardAction.setBackgroundResource(R.drawable.bg_widget_on)
-            binding.widgetData.setBackgroundResource(R.drawable.bg_widget_on)
-            binding.widgetThreats.setBackgroundResource(R.drawable.bg_widget_on)
-            binding.widgetPackets.setBackgroundResource(R.drawable.bg_widget_on)
-            
-            coreRotationAnimator?.start()
-            coreGlowAnimator?.start()
-            binding.coreGlow.animate().alpha(1f).setDuration(500).start()
+            // Ambient Lighting Fade In
+            binding.ambientGlow.animate().alpha(1f).setDuration(1000).start()
+
+            binding.tvAppTitle.setTextColor(Color.parseColor("#00E5FF"))
+            binding.tvActionTitle.setTextColor(Color.parseColor("#00E5FF"))
+            binding.tvDnsInfo.text = "Priority -20 | 6x Gatling Active"
+            binding.tvDnsInfo.setTextColor(Color.parseColor("#8000E5FF"))
+
         } else {
-            binding.tvStatus.text = "STANDBY"
-            binding.tvStatus.setTextColor(Color.parseColor("#8B9BB4"))
-            binding.tvDnsInfo.text = "Priority: Idle"
+            binding.fluidCore.setActive(false)
             
-            // Revert Widgets
-            binding.cardAction.setBackgroundResource(R.drawable.bg_widget_off)
-            binding.widgetData.setBackgroundResource(R.drawable.bg_widget_off)
-            binding.widgetThreats.setBackgroundResource(R.drawable.bg_widget_off)
-            binding.widgetPackets.setBackgroundResource(R.drawable.bg_widget_off)
-            
-            coreRotationAnimator?.cancel()
-            coreGlowAnimator?.cancel()
-            binding.coreGlow.animate().alpha(0f).setDuration(500).start()
+            // Ambient Lighting Fade Out
+            binding.ambientGlow.animate().alpha(0f).setDuration(800).start()
+
+            binding.tvAppTitle.setTextColor(Color.parseColor("#FFFFFF"))
+            binding.tvActionTitle.setTextColor(Color.parseColor("#FFFFFF"))
+            binding.tvDnsInfo.text = "System Standby"
+            binding.tvDnsInfo.setTextColor(Color.parseColor("#99A2B3"))
             
             currentPackets = 0
             currentBlocked = 0
             binding.tvPackets.text = "0"
-            binding.tvBytes.text = "0.00 B"
+            binding.tvBytes.text = "0 B"
             binding.tvBlocked.text = "0"
         }
     }
@@ -181,7 +169,6 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                 intent.data = Uri.parse("package:$packageName")
                 startActivity(intent)
-                Toast.makeText(this, "Vui lòng cho phép bỏ qua tối ưu pin để Leviathan chạy mượt mà nhất", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 e.printStackTrace()
             }

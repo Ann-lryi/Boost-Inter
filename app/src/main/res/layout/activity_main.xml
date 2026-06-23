@@ -4,80 +4,69 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark"
-    android:padding="24dp">
+    android:clipChildren="false">
 
-    <!-- Header Section -->
+    <!-- Ambient Lighting Blob (OriginOS style underlying glow) -->
+    <View
+        android:id="@+id/ambientGlow"
+        android:layout_width="600dp"
+        android:layout_height="600dp"
+        android:background="@drawable/bg_ambient_glow"
+        android:translationY="-100dp"
+        android:alpha="0f"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <TextView
         android:id="@+id/tvAppBrand"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="L E V I A T H A N"
-        android:textSize="14sp"
+        android:textSize="12sp"
         android:letterSpacing="0.4"
         android:textStyle="bold"
         android:textColor="@color/neon_cyan"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="40dp"
+        android:layout_marginStart="32dp"/>
 
     <TextView
         android:id="@+id/tvAppTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Core Engine"
-        android:textSize="32sp"
+        android:text="Quantum Core"
+        android:textSize="36sp"
         android:textStyle="bold"
         android:textColor="@color/text_title"
+        android:fontFamily="sans-serif-medium"
         app:layout_constraintTop_toBottomOf="@id/tvAppBrand"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="4dp"/>
+        android:layout_marginTop="4dp"
+        android:layout_marginStart="32dp"/>
 
-    <!-- Central Quantum Core -->
-    <View
-        android:id="@+id/coreGlow"
-        android:layout_width="220dp"
-        android:layout_height="220dp"
-        android:background="@drawable/bg_core_glow"
-        android:alpha="0.0"
+    <!-- Generative Art Canvas (Replaces static PNG) -->
+    <com.networkoptimizer.ui.QuantumFluidView
+        android:id="@+id/fluidCore"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
         app:layout_constraintTop_toBottomOf="@id/tvAppTitle"
         app:layout_constraintBottom_toTopOf="@id/widgetGrid"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <ImageView
-        android:id="@+id/imgCore"
-        android:layout_width="160dp"
-        android:layout_height="160dp"
-        android:src="@mipmap/ic_launcher"
-        app:layout_constraintTop_toTopOf="@id/coreGlow"
-        app:layout_constraintBottom_toBottomOf="@id/coreGlow"
-        app:layout_constraintStart_toStartOf="@id/coreGlow"
-        app:layout_constraintEnd_toEndOf="@id/coreGlow" />
-
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="STANDBY"
-        android:textSize="16sp"
-        android:letterSpacing="0.2"
-        android:textStyle="bold"
-        android:textColor="@color/text_subtitle"
-        app:layout_constraintTop_toBottomOf="@id/imgCore"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"/>
-
-    <!-- Liquid Widgets Grid (OriginOS Style) -->
+    <!-- Glassmorphism Widget Grid -->
     <LinearLayout
         android:id="@+id/widgetGrid"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:paddingHorizontal="24dp"
         app:layout_constraintBottom_toTopOf="@id/cardAction"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="32dp">
+        android:layout_marginBottom="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -93,9 +82,10 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:background="@drawable/bg_widget_off"
-                android:padding="20dp"
-                android:layout_marginEnd="8dp">
+                android:background="@drawable/bg_glass_card"
+                android:padding="24dp"
+                android:layout_marginEnd="8dp"
+                android:elevation="10dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -107,11 +97,12 @@
                     android:id="@+id/tvBytes"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0.00 B"
+                    android:text="0 B"
                     android:textColor="@color/text_title"
                     android:textStyle="bold"
-                    android:textSize="22sp"
-                    android:layout_marginTop="8dp"/>
+                    android:textSize="24sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="12dp"/>
             </LinearLayout>
 
             <!-- Threats Widget -->
@@ -121,9 +112,10 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:background="@drawable/bg_widget_off"
-                android:padding="20dp"
-                android:layout_marginStart="8dp">
+                android:background="@drawable/bg_glass_card"
+                android:padding="24dp"
+                android:layout_marginStart="8dp"
+                android:elevation="10dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -138,8 +130,9 @@
                     android:text="0"
                     android:textColor="@color/text_title"
                     android:textStyle="bold"
-                    android:textSize="22sp"
-                    android:layout_marginTop="8dp"/>
+                    android:textSize="24sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="12dp"/>
             </LinearLayout>
         </LinearLayout>
 
@@ -149,9 +142,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="@drawable/bg_widget_off"
-            android:padding="20dp"
-            android:gravity="center_vertical">
+            android:background="@drawable/bg_glass_card"
+            android:padding="24dp"
+            android:gravity="center_vertical"
+            android:elevation="10dp">
             
             <LinearLayout
                 android:layout_width="0dp"
@@ -172,15 +166,11 @@
                     android:text="0"
                     android:textColor="@color/text_title"
                     android:textStyle="bold"
-                    android:textSize="28sp"
-                    android:layout_marginTop="4dp"/>
+                    android:textSize="32sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginTop="8dp"/>
             </LinearLayout>
             
-            <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:src="@android:drawable/ic_menu_sort_by_size"
-                app:tint="@color/neon_cyan_dim"/>
         </LinearLayout>
     </LinearLayout>
 
@@ -189,10 +179,13 @@
         android:id="@+id/cardAction"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_widget_off"
+        android:background="@drawable/bg_glass_card"
         android:orientation="horizontal"
-        android:padding="24dp"
+        android:padding="28dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="40dp"
         android:gravity="center_vertical"
+        android:elevation="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -203,6 +196,7 @@
             android:layout_weight="1"
             android:orientation="vertical">
             <TextView
+                android:id="@+id/tvActionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="ACTIVATE LEVIATHAN"
@@ -213,10 +207,10 @@
                 android:id="@+id/tvDnsInfo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Priority: Idle"
+                android:text="System Standby"
                 android:textColor="@color/text_subtitle"
                 android:textSize="12sp"
-                android:layout_marginTop="4dp"/>
+                android:layout_marginTop="6dp"/>
         </LinearLayout>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
@@ -224,7 +218,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:thumbTint="@color/text_title"
-            app:trackTint="@color/stroke_off"/>
+            app:trackTint="@color/stroke_glass"/>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

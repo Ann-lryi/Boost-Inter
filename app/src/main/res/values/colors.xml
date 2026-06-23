@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- OriginOS / Apple Premium Dark Theme Colors -->
-    <color name="bg_dark">#05070F</color>
-    <color name="bg_card_off">#141824</color>
-    <color name="bg_card_on">#1A00E5FF</color>
-    <color name="stroke_off">#2A324A</color>
-    <color name="stroke_on">#4D00E5FF</color>
+    <color name="bg_dark">#000000</color> <!-- Absolute Black -->
+    <color name="bg_glass">#1AFFFFFF</color> <!-- 10% White for Glass -->
+    <color name="stroke_glass">#33FFFFFF</color> <!-- 20% White for Specular Highlight -->
+    
     <color name="neon_cyan">#00E5FF</color>
-    <color name="neon_cyan_dim">#8000E5FF</color>
+    <color name="neon_magenta">#FF00FF</color>
     <color name="text_title">#FFFFFF</color>
-    <color name="text_subtitle">#8B9BB4</color>
-    <color name="threat_red">#FF2A55</color>
+    <color name="text_subtitle">#99A2B3</color>
 </resources>
