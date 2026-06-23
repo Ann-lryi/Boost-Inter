@@ -30,9 +30,8 @@ class DnsVpnService : VpnService() {
             val builder = Builder()
                 .setSession("NetworkOptimizer DNS")
                 .addAddress("10.0.0.2", 32)
-                .addDnsServer("1.1.1.1") // Cloudflare DNS
-                .addDnsServer("1.0.0.1")
-                .addRoute("0.0.0.0", 0) // Route all traffic for monitoring/processing
+                .addDnsServer("1.1.1.1") // Ép thiết bị dùng Cloudflare DNS
+                .addRoute("1.1.1.1", 32) // Chỉ định tuyến lưu lượng đến 1.1.1.1 vào TUN interface để xử lý bằng C++
             
             vpnInterface = builder.establish()
             

@@ -2,53 +2,51 @@ package com.networkoptimizer
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
 import android.net.VpnService
 import android.os.Bundle
-import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.networkoptimizer.databinding.ActivityMainBinding
 import com.networkoptimizer.vpn.DnsVpnService
 import com.networkoptimizer.vpn.NativePacketEngine
 
 class MainActivity : AppCompatActivity() {
 
     private val VPN_REQUEST_CODE = 0x0F
+    private lateinit var binding: ActivityMainBinding
+    private var isVpnActive = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Simple layout building in code to avoid XML layout for now, to keep it simple and bug-free
-        val layout = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(64, 64, 64, 64)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // Setup callback từ C++
+        NativePacketEngine.onStatsUpdated = { packets, bytes ->
+            runOnUiThread {
+                if (isVpnActive) {
+                    binding.tvPackets.text = "$packets"
+                    binding.tvBytes.text = formatBytes(bytes)
+                }
+            }
         }
 
-        val statusText = TextView(this).apply {
-            text = "Trạng thái: Chưa kết nối\n" + NativePacketEngine.stringFromJNI()
-            textSize = 18f
-        }
-        
-        val btnStart = Button(this).apply {
-            text = "Bật Tối Ưu (Đổi DNS 1.1.1.1)"
-            setOnClickListener {
+        binding.switchVpn.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && !isVpnActive) {
                 startVpnFlow()
-            }
-        }
-
-        val btnStop = Button(this).apply {
-            text = "Tắt"
-            setOnClickListener {
+            } else if (!isChecked && isVpnActive) {
                 stopVpnService()
-                statusText.text = "Trạng thái: Đã tắt"
             }
         }
+    }
 
-        layout.addView(statusText)
-        layout.addView(btnStart)
-        layout.addView(btnStop)
-
-        setContentView(layout)
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return String.format("%.2f KB", kb)
+        val mb = kb / 1024.0
+        return String.format("%.2f MB", mb)
     }
 
     private fun startVpnFlow() {
@@ -62,12 +60,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            val serviceIntent = Intent(this, DnsVpnService::class.java)
-            startService(serviceIntent)
-            Toast.makeText(this, "Đã bật DNS Changer", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Cần cấp quyền VPN để hoạt động", Toast.LENGTH_LONG).show()
+        if (requestCode == VPN_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                val serviceIntent = Intent(this, DnsVpnService::class.java)
+                startService(serviceIntent)
+                updateUiState(true)
+            } else {
+                binding.switchVpn.isChecked = false
+                Toast.makeText(this, "Cần cấp quyền VPN để hoạt động", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -76,5 +77,21 @@ class MainActivity : AppCompatActivity() {
             action = "STOP"
         }
         startService(serviceIntent)
+        updateUiState(false)
+    }
+
+    private fun updateUiState(active: Boolean) {
+        isVpnActive = active
+        if (active) {
+            binding.tvStatus.text = "ĐANG TỐI ƯU (1.1.1.1)"
+            binding.tvStatus.setTextColor(Color.parseColor("#4CAF50"))
+            binding.imgStatus.setColorFilter(Color.parseColor("#4CAF50"))
+        } else {
+            binding.tvStatus.text = "CHƯA KẾT NỐI"
+            binding.tvStatus.setTextColor(Color.parseColor("#BDBDBD"))
+            binding.imgStatus.setColorFilter(Color.parseColor("#BDBDBD"))
+            binding.tvPackets.text = "0"
+            binding.tvBytes.text = "0 B"
+        }
     }
 }
