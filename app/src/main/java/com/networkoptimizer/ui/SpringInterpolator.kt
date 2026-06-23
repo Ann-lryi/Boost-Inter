@@ -7,6 +7,9 @@ import kotlin.math.sin
 
 class SpringInterpolator(private val factor: Float = 0.4f) : Interpolator {
     override fun getInterpolation(input: Float): Float {
-        return (pow(2.0, -10.0 * input) * sin((input - factor / 4) * (2 * Math.PI) / factor) + 1).toFloat()
+        // Fix: Explicitly cast everything to Float to match kotlin.math.pow(Float, Float)
+        val power = 2.0f.pow(-10.0f * input)
+        val term = sin((input - factor / 4f) * (2f * Math.PI.toFloat()) / factor)
+        return (power * term + 1f)
     }
 }
