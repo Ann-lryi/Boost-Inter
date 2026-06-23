@@ -23,11 +23,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Setup callback từ C++
-        NativePacketEngine.onStatsUpdated = { packets, bytes ->
+        NativePacketEngine.onStatsUpdated = { packets, bytes, blocked ->
             runOnUiThread {
                 if (isVpnActive) {
                     binding.tvPackets.text = "$packets"
                     binding.tvBytes.text = formatBytes(bytes)
+                    binding.tvBlocked.text = "$blocked"
                 }
             }
         }
@@ -84,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         isVpnActive = active
         if (active) {
             binding.tvStatus.text = "ENGINE ACTIVE"
-            binding.tvDnsInfo.text = "Route: 1.1.1.1 (Cloudflare)"
+            binding.tvDnsInfo.text = "MTU: 1280 | Racing 4 Upstreams"
             binding.tvStatus.setTextColor(Color.parseColor("#00FFA3")) // accent green
             binding.imgStatus.setColorFilter(Color.parseColor("#00FFA3"))
         } else {
@@ -94,6 +95,7 @@ class MainActivity : AppCompatActivity() {
             binding.imgStatus.setColorFilter(Color.parseColor("#4B5563"))
             binding.tvPackets.text = "0"
             binding.tvBytes.text = "0.00 B"
+            binding.tvBlocked.text = "0"
         }
     }
 }

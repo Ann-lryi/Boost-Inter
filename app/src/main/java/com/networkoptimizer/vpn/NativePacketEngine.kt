@@ -5,7 +5,7 @@ object NativePacketEngine {
         System.loadLibrary("networkoptimizer")
     }
 
-    var onStatsUpdated: ((rx: Long, tx: Long) -> Unit)? = null
+    var onStatsUpdated: ((rx: Long, tx: Long, blocked: Long) -> Unit)? = null
 
     @JvmStatic
     external fun stringFromJNI(): String
@@ -17,7 +17,7 @@ object NativePacketEngine {
     external fun stopPacketProcessing()
 
     @JvmStatic
-    fun onTrafficUpdated(packets: Long, bytes: Long) {
-        onStatsUpdated?.invoke(packets, bytes)
+    fun onTrafficUpdated(packets: Long, bytes: Long, adsBlocked: Long) {
+        onStatsUpdated?.invoke(packets, bytes, adsBlocked)
     }
 }
