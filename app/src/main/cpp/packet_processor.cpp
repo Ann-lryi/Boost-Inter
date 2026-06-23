@@ -198,28 +198,3 @@ Java_com_networkoptimizer_vpn_NativePacketEngine_stopPacketProcessing(JNIEnv* en
         gEngineClass = nullptr;
     }
 }
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_networkoptimizer_vpn_NativePacketEngine_stringFromJNI(JNIEnv* env, jclass clazz) {
-    return env->NewStringUTF("DNS Racing Active");
-}
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_networkoptimizer_vpn_NativePacketEngine_startPacketProcessing(JNIEnv* env, jclass clazz, jint vpn_fd) {
-    if (gIsRunning) return JNI_FALSE;
-    if (gEngineClass == nullptr) gEngineClass = (jclass)env->NewGlobalRef(clazz);
-    gIsRunning = true;
-    gProcessorThread = std::thread(processPacketsLoop, vpn_fd);
-    return JNI_TRUE;
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_networkoptimizer_vpn_NativePacketEngine_stopPacketProcessing(JNIEnv* env, jclass clazz) {
-    if (!gIsRunning) return;
-    gIsRunning = false;
-    if (gProcessorThread.joinable()) gProcessorThread.join();
-    if (gEngineClass != nullptr) {
-        env->DeleteGlobalRef(gEngineClass);
-        gEngineClass = nullptr;
-    }
-}
