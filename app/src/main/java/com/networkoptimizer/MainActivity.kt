@@ -1,6 +1,5 @@
 package com.networkoptimizer
 
-import android.animation.ArgbEvaluator
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.app.Activity
@@ -17,7 +16,6 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.networkoptimizer.databinding.ActivityMainBinding
-import com.networkoptimizer.ui.SpringInterpolator
 import com.networkoptimizer.vpn.DnsVpnService
 import com.networkoptimizer.vpn.NativePacketEngine
 
@@ -57,17 +55,6 @@ class MainActivity : AppCompatActivity() {
                 stopVpnService()
             }
         }
-    }
-
-    private fun popView(view: View) {
-        view.scaleX = 0.8f
-        view.scaleY = 0.8f
-        view.animate()
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(600)
-            .setInterpolator(SpringInterpolator(0.3f))
-            .start()
     }
 
     private fun animateNumber(textView: android.widget.TextView, start: Long, end: Long) {
@@ -123,31 +110,39 @@ class MainActivity : AppCompatActivity() {
     private fun updateUiState(active: Boolean) {
         isVpnActive = active
         
-        // OriginOS Spring Animations for Widgets
-        popView(binding.widgetData)
-        popView(binding.widgetThreats)
-        popView(binding.widgetPackets)
-        popView(binding.cardAction)
+        // Cải tiến UX 1: Giảm độ sáng viền nền thay vì làm giật khung hình (No Pop Lag)
+        val bgTargetAlpha = if (active) 40 else 255
+        val bgTargetElevation = if (active) 2f else 10f // Đẩy sâu Widget xuống lớp nền
+        
+        animateBackground(binding.widgetData, bgTargetAlpha, bgTargetElevation)
+        animateBackground(binding.widgetThreats, bgTargetAlpha, bgTargetElevation)
+        animateBackground(binding.widgetPackets, bgTargetAlpha, bgTargetElevation)
+        animateBackground(binding.cardAction, bgTargetAlpha, bgTargetElevation)
         
         if (active) {
             binding.fluidCore.setActive(true)
-            
-            // Ambient Lighting Fade In
             binding.ambientGlow.animate().alpha(1f).setDuration(1000).start()
 
-            binding.tvAppTitle.setTextColor(Color.parseColor("#00E5FF"))
-            binding.tvActionTitle.setTextColor(Color.parseColor("#00E5FF"))
+            // Cải tiến UX 2: Chữ phát sáng Neon khi viền mờ đi (Tạo tương phản cực độ)
+            applyNeonText(binding.tvAppTitle, true)
+            applyNeonText(binding.tvActionTitle, true)
+            applyNeonText(binding.tvPackets, true)
+            applyNeonText(binding.tvBytes, true)
+            applyNeonText(binding.tvBlocked, true)
+
             binding.tvDnsInfo.text = "Priority -20 | 6x Gatling Active"
-            binding.tvDnsInfo.setTextColor(Color.parseColor("#8000E5FF"))
+            binding.tvDnsInfo.setTextColor(Color.parseColor("#00E5FF"))
 
         } else {
             binding.fluidCore.setActive(false)
-            
-            // Ambient Lighting Fade Out
             binding.ambientGlow.animate().alpha(0f).setDuration(800).start()
 
-            binding.tvAppTitle.setTextColor(Color.parseColor("#FFFFFF"))
-            binding.tvActionTitle.setTextColor(Color.parseColor("#FFFFFF"))
+            applyNeonText(binding.tvAppTitle, false)
+            applyNeonText(binding.tvActionTitle, false)
+            applyNeonText(binding.tvPackets, false)
+            applyNeonText(binding.tvBytes, false)
+            applyNeonText(binding.tvBlocked, false)
+
             binding.tvDnsInfo.text = "System Standby"
             binding.tvDnsInfo.setTextColor(Color.parseColor("#99A2B3"))
             
@@ -156,6 +151,26 @@ class MainActivity : AppCompatActivity() {
             binding.tvPackets.text = "0"
             binding.tvBytes.text = "0 B"
             binding.tvBlocked.text = "0"
+        }
+    }
+
+    private fun animateBackground(view: View, targetAlpha: Int, targetElevation: Float) {
+        view.background?.mutate()?.let { bg ->
+            ObjectAnimator.ofInt(bg, "alpha", targetAlpha).apply {
+                duration = 500
+                start()
+            }
+        }
+        view.animate().translationZ(targetElevation - view.elevation).setDuration(500).start()
+    }
+
+    private fun applyNeonText(tv: android.widget.TextView, isOn: Boolean) {
+        if (isOn) {
+            tv.setTextColor(Color.parseColor("#FFFFFF"))
+            tv.setShadowLayer(15f, 0f, 0f, Color.parseColor("#00E5FF"))
+        } else {
+            tv.setTextColor(Color.parseColor("#FFFFFF"))
+            tv.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
         }
     }
 
