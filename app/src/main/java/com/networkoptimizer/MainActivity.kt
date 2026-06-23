@@ -83,15 +83,17 @@ class MainActivity : AppCompatActivity() {
     private fun updateUiState(active: Boolean) {
         isVpnActive = active
         if (active) {
-            binding.tvStatus.text = "ĐANG TỐI ƯU (1.1.1.1)"
-            binding.tvStatus.setTextColor(Color.parseColor("#4CAF50"))
-            binding.imgStatus.setColorFilter(Color.parseColor("#4CAF50"))
+            binding.tvStatus.text = "ENGINE ACTIVE"
+            binding.tvDnsInfo.text = "Route: 1.1.1.1 (Cloudflare)"
+            binding.tvStatus.setTextColor(Color.parseColor("#00FFA3")) // accent green
+            binding.imgStatus.setColorFilter(Color.parseColor("#00FFA3"))
         } else {
-            binding.tvStatus.text = "CHƯA KẾT NỐI"
-            binding.tvStatus.setTextColor(Color.parseColor("#BDBDBD"))
-            binding.imgStatus.setColorFilter(Color.parseColor("#BDBDBD"))
+            binding.tvStatus.text = "SYSTEM STANDBY"
+            binding.tvDnsInfo.text = "Route: None"
+            binding.tvStatus.setTextColor(Color.parseColor("#4B5563")) // status_off
+            binding.imgStatus.setColorFilter(Color.parseColor("#4B5563"))
             binding.tvPackets.text = "0"
-            binding.tvBytes.text = "0 B"
+            binding.tvBytes.text = "0.00 B"
         }
     }
 }

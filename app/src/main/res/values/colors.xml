@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#00BCD4</color>
-    <color name="primary_dark">#0097A7</color>
-    <color name="accent">#FFC107</color>
-    <color name="background">#121212</color>
-    <color name="surface">#1E1E1E</color>
+    <!-- Dark & Cyberpunk Theme Colors -->
+    <color name="primary">#00E5FF</color>
+    <color name="primary_dark">#00B8D4</color>
+    <color name="accent">#00FFA3</color>
+    <color name="background">#090A0F</color>
+    <color name="surface">#13151A</color>
+    <color name="surface_stroke">#1F2937</color>
     <color name="text_main">#FFFFFF</color>
+    <color name="text_secondary">#8B949E</color>
+    <color name="status_off">#4B5563</color>
+    <color name="status_on">#00FFA3</color>
 </resources>

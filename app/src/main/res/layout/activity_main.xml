@@ -4,132 +4,210 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F5F5F5"
+    android:background="@color/background"
     android:padding="24dp">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- Header Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Network Optimizer"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="#333333"
-        android:layout_marginBottom="8dp"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="40dp">
+        
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@mipmap/ic_launcher"
+            android:layout_marginEnd="16dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tăng tốc mạng và phân tích lưu lượng bằng C++ Engine (DNS Changer)"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:layout_marginBottom="32dp"/>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="N E T W O R K"
+                android:textSize="12sp"
+                android:letterSpacing="0.2"
+                android:textColor="@color/primary"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OPTIMIZER"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_main"/>
+        </LinearLayout>
+    </LinearLayout>
 
+    <!-- Main Status Card -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/surface"
+        app:cardCornerRadius="24dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="@color/surface_stroke"
+        app:cardElevation="0dp"
         android:layout_marginBottom="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp"
+            android:paddingTop="40dp"
+            android:paddingBottom="40dp"
             android:gravity="center">
 
             <ImageView
                 android:id="@+id/imgStatus"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:src="@android:drawable/ic_dialog_info"
-                app:tint="#BDBDBD"
-                android:layout_marginBottom="16dp"/>
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@android:drawable/ic_secure"
+                app:tint="@color/status_off"
+                android:layout_marginBottom="24dp"/>
 
             <TextView
                 android:id="@+id/tvStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="CHƯA KẾT NỐI"
-                android:textSize="18sp"
+                android:text="SYSTEM STANDBY"
+                android:textSize="20sp"
                 android:textStyle="bold"
-                android:textColor="#BDBDBD"/>
+                android:letterSpacing="0.1"
+                android:textColor="@color/status_off"/>
+                
+            <TextView
+                android:id="@+id/tvDnsInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Route: None"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"/>
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <com.google.android.material.card.MaterialCardView
+    <!-- Metrics Cards -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        android:layout_marginBottom="32dp">
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        android:layout_marginBottom="40dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- Packets Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:baselineAligned="false">
+            android:layout_weight="1"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/surface_stroke"
+            android:layout_marginEnd="8dp">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:orientation="vertical"
-                android:gravity="center">
+                android:padding="20dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Packets Đã Quét"
-                    android:textColor="#888888"
-                    android:textSize="12sp"/>
+                    android:text="PACKETS"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/tvPackets"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="#333333"
+                    android:textColor="@color/text_main"
                     android:textStyle="bold"
-                    android:textSize="20sp"/>
+                    android:textSize="24sp"
+                    android:layout_marginTop="8dp"/>
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <View
-                android:layout_width="1dp"
-                android:layout_height="match_parent"
-                android:background="#E0E0E0"/>
+        <!-- Bytes Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="20dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/surface_stroke"
+            android:layout_marginStart="8dp">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:orientation="vertical"
-                android:gravity="center">
+                android:padding="20dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Dung lượng"
-                    android:textColor="#888888"
-                    android:textSize="12sp"/>
+                    android:text="DATA PROCESSED"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/tvBytes"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0 B"
-                    android:textColor="#333333"
+                    android:text="0.00 B"
+                    android:textColor="@color/text_main"
                     android:textStyle="bold"
-                    android:textSize="20sp"/>
+                    android:textSize="24sp"
+                    android:layout_marginTop="8dp"/>
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switchVpn"
+    <!-- Action Switch -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Kích hoạt Tối Ưu Hóa (DNS)"
-        android:textSize="16sp"
-        android:textStyle="bold"/>
+        app:cardBackgroundColor="#1A00E5FF"
+        app:cardCornerRadius="16dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="@color/primary">
+        
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="NATIVE ENGINE BOOST"
+                android:textColor="@color/primary"
+                android:textStyle="bold"
+                android:textSize="16sp"/>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchVpn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:thumbTint="@color/text_main"
+                app:trackTint="@color/primary_dark"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>
