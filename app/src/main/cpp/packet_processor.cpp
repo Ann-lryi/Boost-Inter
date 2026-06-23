@@ -6,7 +6,8 @@
 #include <atomic>
 #include <poll.h>
 #include <linux/ip.h>
-#include <linux/udp.h>
+// Bỏ <linux/udp.h> vì xung đột định nghĩa trên NDK, dùng hằng số cố định hoặc <netinet/udp.h>
+#include <netinet/udp.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <vector>
@@ -26,7 +27,6 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     return JNI_VERSION_1_6;
 }
 
-// Tính toán IP Checksum theo chuẩn RFC 1071
 uint16_t csum(uint16_t *ptr, int nbytes) {
     long sum = 0;
     uint16_t oddbyte;
@@ -39,23 +39,19 @@ uint16_t csum(uint16_t *ptr, int nbytes) {
     return answer;
 }
 
-// Pseudo-logic kiểm tra DNS Sinkhole
 bool isAdTrackerDNS(const uint8_t* payload, size_t length) {
     return (length > 40 && payload[length - 1] % 10 == 0); 
 }
 
-// Thuật toán Đua Đa Luồng DNS (Phase 5)
 void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, std::vector<uint8_t> payload) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) return;
 
-    // Timeout 1.5s để chống treo thread nếu mất mạng hoàn toàn
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 500000;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    // Đua 4 Upstream Server mạnh nhất thế giới (Bypass TUN vì gửi qua socket vật lý)
     const char* servers[] = {"8.8.8.8", "1.1.1.1", "208.67.222.222", "9.9.9.9"};
     for (const char* ip : servers) {
         struct sockaddr_in dest;
@@ -69,41 +65,38 @@ void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, 
     struct sockaddr_in from;
     socklen_t fromlen = sizeof(from);
     
-    // Gói tin nào trả về ĐẦU TIÊN sẽ được chấp nhận ngay lập tức, các gói đến sau bị drop do close(sock)
     ssize_t res_len = recvfrom(sock, resp_buf, sizeof(resp_buf), 0, (struct sockaddr*)&from, &fromlen);
     close(sock);
 
     if (res_len > 0) {
-        size_t total_len = sizeof(struct iphdr) + sizeof(struct udphdr) + res_len;
+        // Dùng số 8 cứng thay vì sizeof(struct udphdr) để tránh lỗi NDK
+        size_t total_len = sizeof(struct iphdr) + 8 + res_len;
         std::vector<uint8_t> out_pkt(total_len, 0);
 
         struct iphdr* iph = (struct iphdr*)out_pkt.data();
         struct udphdr* udph = (struct udphdr*)(out_pkt.data() + sizeof(struct iphdr));
-        uint8_t* data = out_pkt.data() + sizeof(struct iphdr) + sizeof(struct udphdr);
+        uint8_t* data = out_pkt.data() + sizeof(struct iphdr) + 8;
 
         memcpy(data, resp_buf, res_len);
 
-        // Đảo ngược gói tin IP gửi về ứng dụng trên thiết bị
         iph->ihl = 5;
         iph->version = 4;
         iph->tos = 0;
         iph->tot_len = htons(total_len);
-        iph->id = htons(54321); // ID giả
+        iph->id = htons(54321);
         iph->frag_off = 0;
         iph->ttl = 64;
         iph->protocol = IPPROTO_UDP;
-        iph->saddr = daddr; // Nguồn là server DNS ảo (10.0.0.3)
-        iph->daddr = saddr; // Đích là thiết bị (10.0.0.2)
+        iph->saddr = daddr; 
+        iph->daddr = saddr; 
         iph->check = 0;
         iph->check = csum((uint16_t*)out_pkt.data(), iph->ihl * 4);
 
-        // Header UDP
-        udph->source = htons(dport); // Cổng nguồn là 53
-        udph->dest = htons(sport);   // Cổng đích là ứng dụng đang chờ
-        udph->len = htons(sizeof(struct udphdr) + res_len);
-        udph->check = 0; // Checksum UDP không bắt buộc trong IPv4
+        udph->uh_sport = htons(dport); 
+        udph->uh_dport = htons(sport);   
+        udph->uh_ulen = htons(8 + res_len);
+        udph->uh_sum = 0; 
 
-        // Ghi lại vào màng lọc TUN Kernel -> Phản hồi siêu tốc
         write(tun_fd, out_pkt.data(), total_len);
     }
 }
@@ -134,7 +127,7 @@ void processPacketsLoop(int fd) {
     LOGI("Bắt đầu vòng lặp DNS Racing Engine...");
 
     while (gIsRunning) {
-        int ret = poll(&pfd, 1, 1000); // 1s timeout
+        int ret = poll(&pfd, 1, 1000);
         if (ret > 0) {
             if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) break;
             
@@ -149,25 +142,22 @@ void processPacketsLoop(int fd) {
                         size_t iph_len = iph->ihl * 4;
                         struct udphdr* udph = (struct udphdr*)(buffer + iph_len);
                         
-                        uint16_t dest_port = ntohs(udph->dest);
+                        uint16_t dest_port = ntohs(udph->uh_dport);
                         if (dest_port == 53) {
-                            uint8_t* dns_payload = buffer + iph_len + sizeof(struct udphdr);
-                            size_t dns_len = length - iph_len - sizeof(struct udphdr);
+                            uint8_t* dns_payload = buffer + iph_len + 8;
+                            size_t dns_len = length - iph_len - 8;
                             
-                            // 1. Sinkhole
                             if (isAdTrackerDNS(dns_payload, dns_len)) {
                                 adsBlocked++;
-                                continue; // Drop gói tin
+                                continue; 
                             }
                             
-                            // 2. DNS Racing Dispatcher
                             std::vector<uint8_t> payload_copy(dns_payload, dns_payload + dns_len);
                             uint32_t saddr = iph->saddr;
                             uint32_t daddr = iph->daddr;
-                            uint16_t sport = ntohs(udph->source);
+                            uint16_t sport = ntohs(udph->uh_sport);
                             uint16_t dport = dest_port;
                             
-                            // Chạy ngầm một luồng đua tốc độ cho mỗi truy vấn DNS
                             std::thread race_thread(performDnsRace, fd, saddr, daddr, sport, dport, payload_copy);
                             race_thread.detach();
                         }
@@ -182,6 +172,31 @@ void processPacketsLoop(int fd) {
     }
 
     if (attached) gJvm->DetachCurrentThread();
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_networkoptimizer_vpn_NativePacketEngine_stringFromJNI(JNIEnv* env, jclass clazz) {
+    return env->NewStringUTF("DNS Racing Active");
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_networkoptimizer_vpn_NativePacketEngine_startPacketProcessing(JNIEnv* env, jclass clazz, jint vpn_fd) {
+    if (gIsRunning) return JNI_FALSE;
+    if (gEngineClass == nullptr) gEngineClass = (jclass)env->NewGlobalRef(clazz);
+    gIsRunning = true;
+    gProcessorThread = std::thread(processPacketsLoop, vpn_fd);
+    return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_networkoptimizer_vpn_NativePacketEngine_stopPacketProcessing(JNIEnv* env, jclass clazz) {
+    if (!gIsRunning) return;
+    gIsRunning = false;
+    if (gProcessorThread.joinable()) gProcessorThread.join();
+    if (gEngineClass != nullptr) {
+        env->DeleteGlobalRef(gEngineClass);
+        gEngineClass = nullptr;
+    }
 }
 
 extern "C" JNIEXPORT jstring JNICALL
