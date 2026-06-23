@@ -1,161 +1,106 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/background"
+    android:background="@color/bg_dark"
     android:padding="24dp">
 
     <!-- Header Section -->
+    <TextView
+        android:id="@+id/tvAppBrand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="L E V I A T H A N"
+        android:textSize="14sp"
+        android:letterSpacing="0.4"
+        android:textStyle="bold"
+        android:textColor="@color/neon_cyan"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/tvAppTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Core Engine"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_title"
+        app:layout_constraintTop_toBottomOf="@id/tvAppBrand"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Central Quantum Core -->
+    <View
+        android:id="@+id/coreGlow"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:background="@drawable/bg_core_glow"
+        android:alpha="0.0"
+        app:layout_constraintTop_toBottomOf="@id/tvAppTitle"
+        app:layout_constraintBottom_toTopOf="@id/widgetGrid"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageView
+        android:id="@+id/imgCore"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:src="@mipmap/ic_launcher"
+        app:layout_constraintTop_toTopOf="@id/coreGlow"
+        app:layout_constraintBottom_toBottomOf="@id/coreGlow"
+        app:layout_constraintStart_toStartOf="@id/coreGlow"
+        app:layout_constraintEnd_toEndOf="@id/coreGlow" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="STANDBY"
+        android:textSize="16sp"
+        android:letterSpacing="0.2"
+        android:textStyle="bold"
+        android:textColor="@color/text_subtitle"
+        app:layout_constraintTop_toBottomOf="@id/imgCore"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
+
+    <!-- Liquid Widgets Grid (OriginOS Style) -->
     <LinearLayout
+        android:id="@+id/widgetGrid"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="40dp">
-        
-        <ImageView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@mipmap/ic_launcher"
-            android:layout_marginEnd="16dp"/>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="N E T W O R K"
-                android:textSize="12sp"
-                android:letterSpacing="0.2"
-                android:textColor="@color/primary"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="OPTIMIZER"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_main"/>
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- Main Status Card -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/surface"
-        app:cardCornerRadius="24dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/surface_stroke"
-        app:cardElevation="0dp"
-        android:layout_marginBottom="24dp">
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@id/cardAction"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="32dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="40dp"
-            android:paddingBottom="40dp"
-            android:gravity="center">
+            android:orientation="horizontal"
+            android:baselineAligned="false"
+            android:layout_marginBottom="16dp">
 
-            <ImageView
-                android:id="@+id/imgStatus"
-                android:layout_width="100dp"
-                android:layout_height="100dp"
-                android:src="@android:drawable/ic_secure"
-                app:tint="@color/status_off"
-                android:layout_marginBottom="24dp"/>
-
-            <TextView
-                android:id="@+id/tvStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="SYSTEM STANDBY"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.1"
-                android:textColor="@color/status_off"/>
-                
-            <TextView
-                android:id="@+id/tvDnsInfo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Route: None"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"/>
-
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Metrics Cards -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:baselineAligned="false"
-        android:layout_marginBottom="16dp">
-
-        <!-- Packets Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/surface_stroke"
-            android:layout_marginEnd="8dp">
-
+            <!-- Data Widget -->
             <LinearLayout
-                android:layout_width="match_parent"
+                android:id="@+id/widgetData"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:background="@drawable/bg_widget_off"
+                android:padding="20dp"
+                android:layout_marginEnd="8dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="PACKETS"
-                    android:textColor="@color/primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:id="@+id/tvPackets"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textColor="@color/text_main"
-                    android:textStyle="bold"
-                    android:textSize="20sp"
-                    android:layout_marginTop="8dp"/>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Bytes Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="20dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/surface_stroke"
-            android:layout_marginStart="8dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="DATA PROCESSED"
-                    android:textColor="@color/primary"
+                    android:text="DATA"
+                    android:textColor="@color/text_subtitle"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
                 <TextView
@@ -163,29 +108,50 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0.00 B"
-                    android:textColor="@color/text_main"
+                    android:textColor="@color/text_title"
                     android:textStyle="bold"
-                    android:textSize="20sp"
+                    android:textSize="22sp"
                     android:layout_marginTop="8dp"/>
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
 
-    <!-- Algorithms Card -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/surface"
-        app:cardCornerRadius="20dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/surface_stroke"
-        android:layout_marginBottom="40dp">
+            <!-- Threats Widget -->
+            <LinearLayout
+                android:id="@+id/widgetThreats"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:background="@drawable/bg_widget_off"
+                android:padding="20dp"
+                android:layout_marginStart="8dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="THREATS"
+                    android:textColor="@color/text_subtitle"
+                    android:textSize="12sp"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/tvBlocked"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="@color/text_title"
+                    android:textStyle="bold"
+                    android:textSize="22sp"
+                    android:layout_marginTop="8dp"/>
+            </LinearLayout>
+        </LinearLayout>
 
+        <!-- Packets Widget (Full width) -->
         <LinearLayout
+            android:id="@+id/widgetPackets"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="20dp">
+            android:background="@drawable/bg_widget_off"
+            android:padding="20dp"
+            android:gravity="center_vertical">
             
             <LinearLayout
                 android:layout_width="0dp"
@@ -195,82 +161,70 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="ADS / THREATS BLOCKED"
-                    android:textColor="#FF5252"
+                    android:text="PACKETS PROCESSED"
+                    android:textColor="@color/text_subtitle"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
                 <TextView
-                    android:id="@+id/tvBlocked"
+                    android:id="@+id/tvPackets"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="@color/text_main"
+                    android:textColor="@color/text_title"
                     android:textStyle="bold"
-                    android:textSize="20sp"
-                    android:layout_marginTop="8dp"/>
+                    android:textSize="28sp"
+                    android:layout_marginTop="4dp"/>
             </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="end">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="ALGORITHMS"
-                    android:textColor="@color/accent"
-                    android:textSize="12sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="DNS Race, Sinkhole"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp"
-                    android:layout_marginTop="8dp"/>
-            </LinearLayout>
+            
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_menu_sort_by_size"
+                app:tint="@color/neon_cyan_dim"/>
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"/>
-
-    <!-- Action Switch -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Master Switch Card -->
+    <LinearLayout
+        android:id="@+id/cardAction"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="#1A00E5FF"
-        app:cardCornerRadius="16dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/primary">
+        android:background="@drawable/bg_widget_off"
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:gravity="center_vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
         
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-            
+            android:layout_weight="1"
+            android:orientation="vertical">
             <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="NATIVE ENGINE BOOST"
-                android:textColor="@color/primary"
-                android:textStyle="bold"
-                android:textSize="16sp"/>
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchVpn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:thumbTint="@color/text_main"
-                app:trackTint="@color/primary_dark"/>
+                android:text="ACTIVATE LEVIATHAN"
+                android:textColor="@color/text_title"
+                android:textStyle="bold"
+                android:textSize="16sp"/>
+            <TextView
+                android:id="@+id/tvDnsInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Priority: Idle"
+                android:textColor="@color/text_subtitle"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"/>
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
-</LinearLayout>
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchVpn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:thumbTint="@color/text_title"
+            app:trackTint="@color/stroke_off"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

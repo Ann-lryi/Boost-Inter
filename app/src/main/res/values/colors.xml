@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark & Cyberpunk Theme Colors -->
-    <color name="primary">#00E5FF</color>
-    <color name="primary_dark">#00B8D4</color>
-    <color name="accent">#00FFA3</color>
-    <color name="background">#090A0F</color>
-    <color name="surface">#13151A</color>
-    <color name="surface_stroke">#1F2937</color>
-    <color name="text_main">#FFFFFF</color>
-    <color name="text_secondary">#8B949E</color>
-    <color name="status_off">#4B5563</color>
-    <color name="status_on">#00FFA3</color>
+    <!-- OriginOS / Apple Premium Dark Theme Colors -->
+    <color name="bg_dark">#05070F</color>
+    <color name="bg_card_off">#141824</color>
+    <color name="bg_card_on">#1A00E5FF</color>
+    <color name="stroke_off">#2A324A</color>
+    <color name="stroke_on">#4D00E5FF</color>
+    <color name="neon_cyan">#00E5FF</color>
+    <color name="neon_cyan_dim">#8000E5FF</color>
+    <color name="text_title">#FFFFFF</color>
+    <color name="text_subtitle">#8B9BB4</color>
+    <color name="threat_red">#FF2A55</color>
 </resources>
