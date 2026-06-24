@@ -29,38 +29,48 @@ class QuantumFluidView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
     
-    // Paint cho hiệu ứng hạt gia tốc tốc độ cao
-    private val paintSpeed = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        color = Color.parseColor("#FFFFFF")
+    // Paint cho hiệu ứng Hạt ánh sáng (Light Particles)
+    private val paintParticle = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#00E5FF")
     }
 
     private var animator: ValueAnimator? = null
 
-    // Cấu trúc Hạt Gia Tốc (Warp Speed Particle System)
+    // Cấu trúc Hạt ánh sáng trôi nổi chậm rãi (Brownian Motion)
     private class Particle(
-        var angle: Float, 
-        var radius: Float, 
-        var speed: Float, 
-        var length: Float, 
-        var alpha: Int
+        var x: Float, 
+        var y: Float, 
+        var vx: Float, 
+        var vy: Float, 
+        var size: Float,
+        var life: Float,
+        var maxLife: Float
     )
-    private val particles = Array(60) { createParticle(true) }
-
-    private fun createParticle(randomizeRadius: Boolean = false): Particle {
-        return Particle(
-            angle = Random.nextFloat() * (Math.PI * 2).toFloat(),
-            radius = if (randomizeRadius) Random.nextFloat() * 200f else 0f,
-            speed = Random.nextFloat() * 18f + 12f,
-            length = Random.nextFloat() * 35f + 15f,
-            alpha = Random.nextInt(150, 255)
-        )
-    }
+    
+    private val particles = ArrayList<Particle>()
+    private val MAX_PARTICLES = 40
 
     init {
         setLayerType(LAYER_TYPE_SOFTWARE, null) 
         updatePaints()
+    }
+
+    private fun spawnParticle(cx: Float, cy: Float, radius: Float): Particle {
+        // Sinh ra hạt ngẫu nhiên bên trong lõi lượng tử
+        val angle = Random.nextFloat() * Math.PI * 2
+        val r = Random.nextFloat() * (radius * 0.8f) // Nằm trong 80% lõi
+        
+        return Particle(
+            x = cx + r.toFloat() * cos(angle).toFloat(),
+            y = cy + r.toFloat() * sin(angle).toFloat(),
+            // Vận tốc cực chậm, trôi nổi (từ -1.5 đến 1.5)
+            vx = (Random.nextFloat() - 0.5f) * 3f,
+            vy = (Random.nextFloat() - 0.5f) * 3f,
+            size = Random.nextFloat() * 4f + 2f, // Kích thước hạt từ 2px đến 6px
+            life = 0f,
+            maxLife = Random.nextFloat() * 100f + 50f // Tuổi thọ hạt (vòng đời fade in/out)
+        )
     }
 
     fun setActive(active: Boolean) {
@@ -73,6 +83,7 @@ class QuantumFluidView @JvmOverloads constructor(
             animator?.cancel()
             animator = null
             time = 0f
+            particles.clear()
             invalidate()
         }
     }
@@ -86,7 +97,7 @@ class QuantumFluidView @JvmOverloads constructor(
 
     private fun startAnimation() {
         animator = ValueAnimator.ofFloat(0f, (Math.PI * 2).toFloat()).apply {
-            duration = 1500 // Tăng tốc độ chu kỳ Fluid khi bật
+            duration = 4000 // Fluid cycle chậm 4 giây (originOS style)
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
             addUpdateListener {
@@ -136,47 +147,43 @@ class QuantumFluidView @JvmOverloads constructor(
         val innerRadius = baseRadius * 0.5f + (if(isActive) sin(time * 6).toFloat() * 10f else 0f)
         
         if (isActive) {
-            // 1. TIA GIA TỐC (Warp Speed Lines bắn từ tâm ra ngoài)
-            for (i in particles.indices) {
-                val p = particles[i]
-                p.radius += p.speed
-                if (p.radius > innerRadius * 0.95f) {
-                    particles[i] = createParticle(false)
-                }
-                
-                val startX = cx + p.radius * cos(p.angle)
-                val startY = cy + p.radius * sin(p.angle)
-                val endX = cx + (p.radius + p.length) * cos(p.angle)
-                val endY = cy + (p.radius + p.length) * sin(p.angle)
-                
-                paintSpeed.alpha = (p.alpha * (p.radius / innerRadius)).toInt().coerceIn(0, 255)
-                paintSpeed.strokeWidth = 2f + (p.radius / innerRadius) * 5f
-                paintSpeed.color = Color.parseColor("#00E5FF")
-                canvas.drawLine(startX, startY, endX, endY, paintSpeed)
-                
-                // Lớp viền trắng chói lõi hạt
-                paintSpeed.strokeWidth = paintSpeed.strokeWidth * 0.5f
-                paintSpeed.color = Color.WHITE
-                canvas.drawLine(startX, startY, endX, endY, paintSpeed)
+            // DUY TRÌ SỐ LƯỢNG HẠT ÁNH SÁNG
+            if (particles.size < MAX_PARTICLES && Random.nextFloat() < 0.2f) {
+                particles.add(spawnParticle(cx, cy, innerRadius))
             }
             
-            // 2. VÒNG TURBINE XOAY (Spinning High-Tech Arcs)
-            paintGlow.maskFilter = null
-            paintGlow.strokeWidth = 4f
-            paintGlow.alpha = 180
-            
-            val dash1 = DashPathEffect(floatArrayOf(50f, 30f), -time * 300f)
-            paintGlow.pathEffect = dash1
-            canvas.drawCircle(cx, cy, innerRadius * 0.7f, paintGlow)
-            
-            val dash2 = DashPathEffect(floatArrayOf(15f, 40f), time * 500f)
-            paintGlow.pathEffect = dash2
-            paintGlow.strokeWidth = 8f
-            paintGlow.alpha = 255
-            canvas.drawCircle(cx, cy, innerRadius * 0.85f, paintGlow)
-            
-            paintGlow.pathEffect = null
+            // XỬ LÝ VÀ VẼ TỪNG HẠT
+            val iterator = particles.iterator()
+            while (iterator.hasNext()) {
+                val p = iterator.next()
+                
+                // Cập nhật vị trí chậm rãi
+                p.x += p.vx
+                p.y += p.vy
+                p.life += 1f
+                
+                // Toán học Fade In / Fade Out (Alpha curve: Parabola)
+                val lifeRatio = p.life / p.maxLife
+                val alpha = (sin(lifeRatio * Math.PI) * 255).toInt().coerceIn(0, 255)
+                
+                if (p.life >= p.maxLife) {
+                    iterator.remove() // Hạt chết, xóa khỏi danh sách
+                    continue
+                }
+                
+                // Vẽ hạt ánh sáng với lõi trắng, viền Glow xanh
+                paintParticle.alpha = alpha
+                paintParticle.maskFilter = BlurMaskFilter(p.size * 1.5f, BlurMaskFilter.Blur.NORMAL)
+                canvas.drawCircle(p.x, p.y, p.size, paintParticle)
+                
+                // Lõi sáng trắng
+                paintParticle.color = Color.WHITE
+                paintParticle.maskFilter = null
+                canvas.drawCircle(p.x, p.y, p.size * 0.5f, paintParticle)
+                paintParticle.color = Color.parseColor("#00E5FF") // reset màu
+            }
         } else {
+            // Chế độ Standby
             paintGlow.maskFilter = null
             paintGlow.strokeWidth = 4f
             paintGlow.alpha = 255
