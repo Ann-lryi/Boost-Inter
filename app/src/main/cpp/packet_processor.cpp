@@ -81,42 +81,23 @@ void sendDnsResponse(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport,
 }
 
 void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, std::vector<uint8_t> payload, std::string queryKey) {
-    JNIEnv* env = nullptr;
-    bool attached = false;
-    if (gJvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
-        if (gJvm->AttachCurrentThread(&env, NULL) == 0) attached = true;
-    }
-
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        if (attached) gJvm->DetachCurrentThread();
         return;
     }
 
-    // ĐỘT PHÁ ANDROID 16: Gọi ngược về Kotlin để xin Kernel OS cấp phép "Protect" cho Socket này,
-    // xuyên thủng mọi hàng rào Firewall hoặc chế độ Lockdown của Android.
-    if (env && gEngineClass) {
-        jmethodID protectMethod = env->GetStaticMethodID(gEngineClass, "protect", "(I)Z");
-        if (protectMethod) {
-            env->CallStaticBooleanMethod(gEngineClass, protectMethod, sock);
-        }
-    }
-
-    // ĐỘT PHÁ 1: Socket Buffer Bloating (Tăng max dung lượng bộ đệm mạng lên 2MB để chống rớt gói tin khi tải nặng)
     int optval = 1024 * 1024 * 2; 
     setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &optval, sizeof(optval));
     setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &optval, sizeof(optval));
 
     struct timeval tv;
     tv.tv_sec = 1;
-    tv.tv_usec = 200000; // Siết timeout cực gắt xuống 1.2s
+    tv.tv_usec = 200000;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    // ĐỘT PHÁ 2: Gatling-Gun Multiplexing - Bắn một lúc 6 tia đến các trạm siêu tốc
     const char* servers[] = {
-        "8.8.8.8", "8.8.4.4",         // Google DNS
-        "1.1.1.1", "1.0.0.1",         // Cloudflare
-        "9.9.9.9", "149.112.112.112"  // Quad9
+        "8.8.8.8", "8.8.4.4",         
+        "1.1.1.1", "1.0.0.1",         
     };
     
     for (const char* ip : servers) {
@@ -137,7 +118,6 @@ void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, 
     if (res_len > 0) {
         std::vector<uint8_t> resp_data(resp_buf, resp_buf + res_len);
         
-        // ĐỘT PHÁ 3: Unique Write Lock (Độc chiếm an toàn khi ghi, cực nhanh)
         {
             std::unique_lock<std::shared_mutex> lock(gCacheMutex);
             gDnsCache[queryKey] = resp_data;
@@ -145,8 +125,6 @@ void performDnsRace(int tun_fd, uint32_t saddr, uint32_t daddr, uint16_t sport, 
 
         sendDnsResponse(tun_fd, saddr, daddr, sport, dport, resp_data);
     }
-
-    if (attached) gJvm->DetachCurrentThread();
 }
 
 void processPacketsLoop(int fd) {
@@ -180,7 +158,7 @@ void processPacketsLoop(int fd) {
     LOGI("Bắt đầu vòng lặp DNS Racing Engine (LEVIATHAN PROTOCOL)...");
 
     while (gIsRunning) {
-        int ret = poll(&pfd, 1, 1000);
+        int ret = poll(&pfd, 1, 100); // 100ms timeout để khi tắt không bị đơ chờ đợi
         if (ret > 0) {
             if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) break;
             

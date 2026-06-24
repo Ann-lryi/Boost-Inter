@@ -89,15 +89,19 @@ class DnsVpnService : VpnService() {
     }
 
     private fun stopVpn() {
-        NativePacketEngine.stopPacketProcessing()
-        serviceJob.cancel()
-        try {
-            vpnInterface?.close()
-        } catch (e: Exception) {
-            Log.e("DnsVpnService", "Error closing VPN interface", e)
+        // ĐỘT PHÁ UX: Đưa quá trình tắt xuống Background Thread để không làm đơ Main UI chờ C++ Thread Join
+        serviceScope.launch(Dispatchers.IO) {
+            NativePacketEngine.stopPacketProcessing()
+            withContext(Dispatchers.Main) {
+                try {
+                    vpnInterface?.close()
+                } catch (e: Exception) {
+                    Log.e("DnsVpnService", "Error closing VPN interface", e)
+                }
+                vpnInterface = null
+                stopSelf()
+            }
         }
-        vpnInterface = null
-        stopSelf()
     }
 
     override fun onDestroy() {
