@@ -4,6 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -13,9 +17,17 @@ import kotlinx.coroutines.*
 
 class DnsVpnService : VpnService() {
 
+    companion object {
+        // FIX: kênh callback trạng thái thật, để UI không còn "giả vờ hoạt động"
+        var onStateChanged: ((active: Boolean, error: String?) -> Unit)? = null
+        private const val MAX_ESTABLISH_RETRIES = 2
+    }
+
     private var vpnInterface: ParcelFileDescriptor? = null
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
@@ -23,31 +35,30 @@ class DnsVpnService : VpnService() {
             stopVpn()
             return START_NOT_STICKY
         }
-        
+
         createForegroundNotification()
         startVpn()
         return START_STICKY
     }
 
     private fun createForegroundNotification() {
-        val channelId = "leviathan_engine_channel"
+        val channelId = "network_optimizer_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Leviathan Engine Status",
+                "Network Optimizer Status",
                 NotificationManager.IMPORTANCE_LOW
             )
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Leviathan Engine Active")
-            .setContentText("Bypassing OS restrictions. Network is optimized.")
+            .setContentTitle("Network Optimizer")
+            .setContentText("Đang tối ưu DNS...")
             .setSmallIcon(android.R.drawable.ic_secure)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        // Android 14+ FGS requirements
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
@@ -55,50 +66,110 @@ class DnsVpnService : VpnService() {
         }
     }
 
-    private fun startVpn() {
+    private fun startVpn(retryCount: Int = 0) {
         if (vpnInterface != null) return
 
         try {
-            // Liên kết socket C++ với Kernel Android để tránh bị chặn bởi Firewall của Android 15/16
-            NativePacketEngine.onProtectSocket = { fd -> 
-                protect(fd) 
+            NativePacketEngine.onProtectSocket = { fd ->
+                protect(fd)
             }
 
             val builder = Builder()
-                .setSession("LEVIATHAN ENGINE")
-                .setMtu(1280) // Cực hạn chống phân mảnh
-                .setBlocking(false) // Đột phá: Đặt TUN vào trạng thái Non-blocking để xử lý luồng cực nhanh
+                .setSession("NETWORK OPTIMIZER")
+                .setMtu(1280)
+                .setBlocking(false)
                 .addAddress("10.0.0.2", 32)
-                .addDnsServer("10.0.0.3") 
-                .addRoute("10.0.0.3", 32) 
-            
+                .addDnsServer("10.0.0.3")
+                .addRoute("10.0.0.3", 32)
+
             vpnInterface = builder.establish()
-            
+
             vpnInterface?.let { fd ->
                 Log.i("DnsVpnService", "TUN Interface established with FD: ${fd.fd}")
-                // Bắt đầu xử lý packets bằng C++ ở background
                 serviceScope.launch {
-                    NativePacketEngine.startPacketProcessing(fd.fd)
+                    val started = NativePacketEngine.startPacketProcessing(fd.fd)
+                    withContext(Dispatchers.Main) {
+                        if (started) {
+                            registerNetworkWatcher()
+                            onStateChanged?.invoke(true, null)
+                        } else {
+                            onStateChanged?.invoke(false, "Không thể khởi động engine xử lý gói tin")
+                            stopVpn()
+                        }
+                    }
                 }
-            } ?: Log.e("DnsVpnService", "Failed to establish VPN interface")
+            } ?: run {
+                Log.e("DnsVpnService", "Failed to establish VPN interface")
+                // FIX: thử lại tối đa MAX_ESTABLISH_RETRIES lần trước khi báo lỗi hẳn
+                if (retryCount < MAX_ESTABLISH_RETRIES) {
+                    serviceScope.launch {
+                        delay(500)
+                        withContext(Dispatchers.Main) { startVpn(retryCount + 1) }
+                    }
+                } else {
+                    onStateChanged?.invoke(false, "Không thể tạo VPN interface. Có thể có VPN khác đang chạy.")
+                    stopSelf()
+                }
+            }
 
         } catch (e: Exception) {
             Log.e("DnsVpnService", "Error starting VPN: ${e.message}")
+            onStateChanged?.invoke(false, e.message)
             stopVpn()
         }
     }
 
+    // FIX: theo dõi đổi mạng Wi-Fi <-> Cellular để tunnel không bị "chết" âm thầm
+    private fun registerNetworkWatcher() {
+        if (connectivityManager == null) {
+            connectivityManager = getSystemService(ConnectivityManager::class.java)
+        }
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            .build()
+
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                // Gắn lại tunnel vào mạng đang hoạt động để tránh gói tin bị "kẹt" trên mạng cũ
+                vpnInterface?.let {
+                    try {
+                        setUnderlyingNetworks(arrayOf(network))
+                        Log.i("DnsVpnService", "Đã chuyển engine sang mạng mới")
+                    } catch (e: Exception) {
+                        Log.e("DnsVpnService", "Lỗi khi chuyển mạng", e)
+                    }
+                }
+            }
+
+            override fun onLost(network: Network) {
+                Log.i("DnsVpnService", "Mất mạng hiện tại, chờ mạng thay thế...")
+            }
+        }
+        connectivityManager?.registerNetworkCallback(request, networkCallback as ConnectivityManager.NetworkCallback)
+    }
+
+    private fun unregisterNetworkWatcher() {
+        try {
+            networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
+        } catch (e: Exception) {
+            Log.e("DnsVpnService", "Lỗi khi huỷ đăng ký network watcher", e)
+        }
+        networkCallback = null
+    }
+
     private fun stopVpn() {
-        // ĐỘT PHÁ UX: Đưa quá trình tắt xuống Background Thread để không làm đơ Main UI chờ C++ Thread Join
         serviceScope.launch(Dispatchers.IO) {
             NativePacketEngine.stopPacketProcessing()
             withContext(Dispatchers.Main) {
+                unregisterNetworkWatcher()
                 try {
                     vpnInterface?.close()
                 } catch (e: Exception) {
                     Log.e("DnsVpnService", "Error closing VPN interface", e)
                 }
                 vpnInterface = null
+                onStateChanged?.invoke(false, null)
                 stopSelf()
             }
         }
